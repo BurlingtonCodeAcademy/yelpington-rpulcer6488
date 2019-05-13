@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<!--
+    Yelpington assignment for BCA:
+    Uses AJAX via fetch(), OpenStreetMap, Leaflets mapping and Nominatim APIs.
+
+    Author: Ron Pulcer
+    Date: May 13, 2019
+-->
+
+<html>
+<head>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.1/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.3.1/dist/leaflet.js"></script>
+</head>
+
+<body onload="getRestaurantData();">
+
+    <div id="restaurant">
+        <div id="mapid" style="height: 400px;">
+        </div>
+        <div id="rawdata">
+        </div>
+    </div>
+
+<script>
+function getRestaurantData() {
+    let name = document.location.hash.slice(1);
+        
+    if (!name) {
+        console.log("no place name specfied");
+    } else {
+        console.log("fetching place named '" + name + "'");
+        
+        fetch(name + '.json')
+            .then(function(response) {
+                return response.json();
+            })
+            .then(function (myJSON) {
+                let infoBox = "<table><tr><td>Name:</td><td>" + myJSON.name +
+                    "</td></tr><tr><td>Address:</td><td>" + myJSON.address +
+                    "</td></tr><tr><td>Phone:</td><td>" + myJSON.phone +
+                    "</td></tr><tr><td>Website:</td><td>" +
+                        "<a href='" + myJSON.website + "' target='_blank'>" + myJSON.website + "</a>" + 
+                    "</td></tr><tr><td>Hours:</td><td>" + myJSON.hours +
+                    "</td></tr><tr><td>Notes:</td><td>" + myJSON.notes[0] + "</td></tr></table>"
+                // console.log(infoBox);
+                document.getElementById("rawdata").innerHTML = infoBox;
+
+                let nominatimURL = "https://nominatim.openstreetmap.org/search/?q=" +
+                    encodeURI(myJSON.address) + "&format=json";
+                // console.log(nominatimURL);
+
+                fetch(nominatimURL)
+                    .then(function(response2) {
+                        return response2.json();
+                    })
+                    .then(function(myJSON2) {
+                        // console.log(myJSON2[0].lat);
+                        // console.log(myJSON2[0].lon);
+                        var map = L.map('mapid').setView([myJSON2[0].lat, myJSON2[0].lon], 16);
+
+                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                        }).addTo(map);
+
+                        L.marker([myJSON2[0].lat, myJSON2[0].lon]).addTo(map)
+                           .bindPopup(infoBox)
+                           .openPopup();
+                    })
+                });
+        }
+    }
+</script>
+</body>
+    
+</html>
