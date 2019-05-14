@@ -12,6 +12,21 @@
     <meta charset="utf-8">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.1/dist/leaflet.css"/>
     <script src="https://unpkg.com/leaflet@1.3.1/dist/leaflet.js"></script>
+
+<style>
+    /*
+    Trying to avoid this error message, which "might" to be related to only 8 of 11 markers showing up on map.
+
+    "Will-change memory consumption is too high. Budget limit is the document surface area multiplied by 3 (483840 px).
+    Occurrences of will-change over the budget will be ignored."
+
+    Firefox console warning: Will-change memory consumption is too high. #4686
+    https://github.com/Leaflet/Leaflet/issues/4686
+     */
+    .leaflet-fade-anim .leaflet-tile,.leaflet-zoom-anim .leaflet-zoom-animated {
+        will-change:auto !important;
+    }
+ </style>
 </head>
 
 <body onload="getRestaurantData();">
