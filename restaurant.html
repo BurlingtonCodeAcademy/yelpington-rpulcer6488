@@ -4,7 +4,7 @@
     Uses AJAX via fetch(), OpenStreetMap, Leaflets mapping and Nominatim APIs.
 
     Author: Ron Pulcer
-    Date: May 13, 2019
+    Date: May 14, 2019
 -->
 
 <html>
@@ -17,60 +17,154 @@
 <body onload="getRestaurantData();">
 
     <div id="restaurant">
-        <div id="mapid" style="height: 400px;">
+        <div id="mapid">
         </div>
         <div id="rawdata">
         </div>
     </div>
 
 <script>
-function getRestaurantData() {
-    let name = document.location.hash.slice(1);
-        
-    if (!name) {
-        console.log("no place name specfied");
-    } else {
-        console.log("fetching place named '" + name + "'");
-        
-        fetch(name + '.json')
+let pageURL = "http://localhost:8080/restaurant.html";
+let hashName = document.location.hash.slice(1);
+//console.log(hashName);
+//let pathName = document.location.pathname.slice(1);
+
+// NOTE: I used the ?r=restName instead of /restName approach,
+// so I wouldn't have to create a new physical page for each restaurant.
+let params = new URLSearchParams(document.location.search);
+let restName = params.get('r');
+let divMap = document.getElementById("mapid");
+
+if(hashName) {
+    divMap.style.height = "0px";
+    getRestaurantData(hashName);
+}
+else if(restName) {
+    divMap.style.height = "400px";
+    getRestaurantMap(restName);
+
+}
+else {
+    divMap.style.height = "600px";
+    getRestaurantList();
+}
+
+function getRestaurantData(name) {
+    fetch(name + '.json')
+        .then(function(response) {
+            return response.json();
+        })
+        .then(function (myJSON) {
+            let infoBox = restaurantInfoTable(myJSON);
+            // console.log(infoBox);
+            document.getElementById("rawdata").innerHTML = infoBox;
+        })
+}
+
+function getRestaurantMap(name) {
+    fetch(name + '.json')
+        .then(function(response) {
+            return response.json();
+        })
+        .then(function (myJSON) {
+            let infoBox = restaurantInfoTable(myJSON);
+            // console.log(infoBox);
+            document.getElementById("rawdata").innerHTML = infoBox;
+
+            let nominatimURL = "https://nominatim.openstreetmap.org/search/?q=" +
+                encodeURI(myJSON.address) + "&format=json";
+            // console.log(nominatimURL);
+
+            fetch(nominatimURL)
+               .then(function(response2) {
+                    return response2.json();
+                })
+                .then(function(myJSON2) {
+                    // console.log(myJSON2[0].lat);
+                    // console.log(myJSON2[0].lon);
+                    var map = L.map('mapid').setView([myJSON2[0].lat, myJSON2[0].lon], 16);
+
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    }).addTo(map);
+
+                    L.marker([myJSON2[0].lat, myJSON2[0].lon]).addTo(map)
+                       .bindPopup(infoBox)
+                       .openPopup();
+                })
+            });
+    }
+
+    function restaurantInfoTable(jsonData) {
+        let tableData = "<table><tr><td>Name:</td><td>" + jsonData.name +
+            "</td></tr><tr><td>Address:</td><td>" + jsonData.address +
+            "</td></tr><tr><td>Phone:</td><td>" + jsonData.phone +
+            "</td></tr><tr><td>Website:</td><td>" +
+                "<a href='" + jsonData.website + "' target='_blank'>" + jsonData.website + "</a>" + 
+            "</td></tr><tr><td>Hours:</td><td>" + jsonData.hours +
+            "</td></tr><tr><td>Notes:</td><td>" + jsonData.notes[0] + "</td></tr></table>"
+        return tableData;
+    }
+
+    function getRestaurantList() {
+        let map;
+        let nominatimURL = "https://nominatim.openstreetmap.org/search/?q=" +
+            encodeURI("Burlington, VT") + "&format=json";
+
+        fetch(nominatimURL)
             .then(function(response) {
                 return response.json();
             })
-            .then(function (myJSON) {
-                let infoBox = "<table><tr><td>Name:</td><td>" + myJSON.name +
-                    "</td></tr><tr><td>Address:</td><td>" + myJSON.address +
-                    "</td></tr><tr><td>Phone:</td><td>" + myJSON.phone +
-                    "</td></tr><tr><td>Website:</td><td>" +
-                        "<a href='" + myJSON.website + "' target='_blank'>" + myJSON.website + "</a>" + 
-                    "</td></tr><tr><td>Hours:</td><td>" + myJSON.hours +
-                    "</td></tr><tr><td>Notes:</td><td>" + myJSON.notes[0] + "</td></tr></table>"
-                // console.log(infoBox);
-                document.getElementById("rawdata").innerHTML = infoBox;
+            .then(function(myJSON) {
+                map = L.map('mapid').setView([myJSON[0].lat, myJSON[0].lon], 16);
 
-                let nominatimURL = "https://nominatim.openstreetmap.org/search/?q=" +
-                    encodeURI(myJSON.address) + "&format=json";
-                // console.log(nominatimURL);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                }).addTo(map);
+            })
 
-                fetch(nominatimURL)
-                    .then(function(response2) {
-                        return response2.json();
-                    })
-                    .then(function(myJSON2) {
-                        // console.log(myJSON2[0].lat);
-                        // console.log(myJSON2[0].lon);
-                        var map = L.map('mapid').setView([myJSON2[0].lat, myJSON2[0].lon], 16);
+        fetch('all.json')
+            .then(function(response2) {
+                return response2.json();
+            })
+            .then(function (myJSON2) {
+                let restList = "<ul>";
+                for(let rest of myJSON2) {
+                    restList += "<li><a href='" + pageURL + "?r=" + rest + "' target='_blank'>" + rest + "</a></li>";
 
-                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                        }).addTo(map);
 
-                        L.marker([myJSON2[0].lat, myJSON2[0].lon]).addTo(map)
-                           .bindPopup(infoBox)
-                           .openPopup();
-                    })
-                });
-        }
+                    fetch(rest + '.json')
+                        .then(function(response3) {
+                           return response3.json();
+                        })
+                        .then(function (myJSON3) {
+                            let infoBox = restaurantInfoTable(myJSON3);
+                            // console.log(myJSON3);
+                            nominatimURL = "https://nominatim.openstreetmap.org/search/?q=" +
+                               encodeURI(myJSON3.address) + "&format=json";
+                            // console.log(nominatimURL);
+
+                            fetch(nominatimURL)
+                                .then(function(response4) {
+                                    return response4.json();
+                                })
+                                .then(function(myJSON4) {
+                                    // console.log(rest);
+                                    // console.log(myJSON4[0].lat);
+                                    // console.log(myJSON4[0].lon);
+
+                                    L.marker([myJSON4[0].lat, myJSON4[0].lon]).addTo(map)
+                                        .bindPopup(infoBox);
+                                       // .openPopup();
+                                })
+                        })
+
+                }
+                restList += "</ul>";
+                document.getElementById("rawdata").innerHTML = restList;
+            })
     }
+
 </script>
 </body>
     
